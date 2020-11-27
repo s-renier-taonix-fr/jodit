@@ -4,6 +4,8 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
+// TODO BB : Voir si il faut rajouter une admin ici pour la gestion des classes css du tableau et des cellules.
+
 import { isJoditObject, isString } from '../../../../core/helpers/checker';
 import { Table } from '../../../../modules';
 import { css } from '../../../../core/helpers';
