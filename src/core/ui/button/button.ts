@@ -6,8 +6,6 @@
 
 import './button.less';
 
-import autobind from 'autobind-decorator';
-
 import { UIElement } from '../element';
 import {
 	IUIButton,
@@ -16,11 +14,12 @@ import {
 	IViewBased
 } from '../../../types';
 import watch from '../../../core/decorators/watch';
-import { STATUSES } from '../../component';
 import { Dom } from '../../dom';
-import { attr, isString, getClassName, isFunction } from '../../helpers';
+import { attr, isString, isFunction } from '../../helpers';
 import { Icon } from '../icon';
-import { UIList } from '..';
+import { UIList } from '../list/list';
+import { autobind, component } from '../../decorators';
+import { STATUSES } from '../../component';
 
 export const UIButtonState = (): IUIButtonState => ({
 	size: 'middle',
@@ -42,7 +41,13 @@ export const UIButtonState = (): IUIButtonState => ({
 	tabIndex: undefined
 });
 
+@component
 export class UIButton extends UIElement implements IUIButton {
+	/** @override */
+	className(): string {
+		return 'UIButton';
+	}
+
 	/**
 	 * Marker for buttons
 	 */
@@ -193,7 +198,7 @@ export class UIButton extends UIElement implements IUIButton {
 		button.appendChild(this.icon);
 		button.appendChild(this.text);
 
-		this.j.e.on(button, `click`, this.onActionFire);
+		this.j.e.on(button, 'click', this.onActionFire);
 
 		return button;
 	}
@@ -205,12 +210,10 @@ export class UIButton extends UIElement implements IUIButton {
 		this.onChangeSize();
 		this.onChangeStatus();
 
-		if (getClassName(this) === getClassName(UIButton.prototype)) {
-			this.setStatus(STATUSES.ready);
-		}
-
 		if (state) {
-			this.setState(state);
+			this.hookStatus(STATUSES.ready, () => {
+				this.setState(state);
+			});
 		}
 	}
 

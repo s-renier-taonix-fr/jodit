@@ -4,8 +4,31 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
+import type {
+	CustomCommand,
+	ExecCommandCallback,
+	IDictionary,
+	IPluginSystem,
+	IStatusBar,
+	IViewOptions,
+	IWorkPlace,
+	markerInfo,
+	Modes,
+	IFileBrowser,
+	IJodit,
+	IUploader,
+	ICreate,
+	IFileBrowserCallBackData,
+	IStorage,
+	CanPromise,
+	HTMLTagNames,
+	IViewBased,
+	IViewComponent
+} from './types';
+
 import { Config, configFactory } from './config';
 import * as consts from './core/constants';
+
 import {
 	Create,
 	Dom,
@@ -31,32 +54,11 @@ import {
 	JoditArray,
 	JoditObject,
 	callPromise,
-	toArray
+	toArray,
+	markAsAtomic
 } from './core/helpers/';
 
 import { Storage } from './core/storage/';
-
-import type {
-	CustomCommand,
-	ExecCommandCallback,
-	IDictionary,
-	IPluginSystem,
-	IStatusBar,
-	IViewOptions,
-	IWorkPlace,
-	markerInfo,
-	Modes,
-	IFileBrowser,
-	IJodit,
-	IUploader,
-	ICreate,
-	IFileBrowserCallBackData,
-	IStorage,
-	CanPromise,
-	HTMLTagNames,
-	IViewBased,
-	IViewComponent
-} from './types';
 
 import { ViewWithToolbar } from './core/view/view-with-toolbar';
 
@@ -67,13 +69,17 @@ import {
 	lang,
 	getContainer
 } from './core/global';
-import { cache } from './core/decorators';
-import autobind from 'autobind-decorator';
+import { autobind, cache } from './core/decorators';
 
 /**
  * Class Jodit. Main class
  */
 export class Jodit extends ViewWithToolbar implements IJodit {
+	/** @override */
+	className(): string {
+		return 'Jodit';
+	}
+
 	/**
 	 * Define if object is Jodit
 	 */
@@ -119,21 +125,31 @@ export class Jodit extends ViewWithToolbar implements IJodit {
 	/**
 	 * Method wrap usual Array in Object helper for prevent deep array merging in options
 	 *
+	 * @deprecated Use Jodit.atom instead
 	 * @param array
 	 * @constructor
 	 */
-	static Array(array: never[]): JoditArray {
-		return new JoditArray(array);
+	static Array<T>(array: T[]): T[] {
+		return JoditArray(array);
 	}
 
 	/**
 	 * Method wrap usual Has Object in Object helper for prevent deep object merging in options*
 	 *
+	 * @deprecated Use Jodit.atom instead
 	 * @param object
 	 * @constructor
 	 */
-	static Object(object: never): JoditObject {
-		return new JoditObject(object);
+	static Object<T>(object: T): T {
+		return JoditObject(object);
+	}
+
+	/**
+	 * Method wrap usual Has Object in Object helper for prevent deep object merging in options*
+	 * @param object
+	 */
+	static atom<T>(object: T): T {
+		return markAsAtomic(object);
 	}
 
 	/**
@@ -621,7 +637,10 @@ export class Jodit extends ViewWithToolbar implements IJodit {
 	 */
 	registerCommand(
 		commandNameOriginal: string,
-		command: CustomCommand<IJodit>
+		command: CustomCommand<IJodit>,
+		options?: {
+			stopPropagation: boolean
+		}
 	): IJodit {
 		const commandName: string = commandNameOriginal.toLowerCase();
 
@@ -638,7 +657,7 @@ export class Jodit extends ViewWithToolbar implements IJodit {
 				command.hotkeys;
 
 			if (hotkeys) {
-				this.registerHotkeyToCommand(hotkeys, commandName);
+				this.registerHotkeyToCommand(hotkeys, commandName, options?.stopPropagation);
 			}
 		}
 
@@ -650,17 +669,20 @@ export class Jodit extends ViewWithToolbar implements IJodit {
 	 *
 	 * @param hotkeys
 	 * @param commandName
+	 * @param shouldStop
 	 */
 	registerHotkeyToCommand(
 		hotkeys: string | string[],
-		commandName: string
+		commandName: string,
+		shouldStop: boolean = true
 	): void {
 		const shortcuts: string = asArray(hotkeys)
 			.map(normalizeKeyAliases)
 			.map(hotkey => hotkey + '.hotkey')
 			.join(' ');
 
-		this.e.off(shortcuts).on(shortcuts, () => {
+		this.e.off(shortcuts).on(shortcuts, (type: string, stop: {shouldStop: boolean}) => {
+			stop.shouldStop = shouldStop ?? true;
 			return this.execCommand(commandName); // because need `beforeCommand`
 		});
 	}
@@ -1090,6 +1112,8 @@ export class Jodit extends ViewWithToolbar implements IJodit {
 
 			const initPluginsResult = pluginSystem.init(this);
 
+			this.e.fire('afterPluginSystemInit', this);
+
 			callPromise(initPluginsResult, () => {
 				this.e.on('changePlace', () => {
 					this.setReadOnly(this.o.readonly);
@@ -1294,7 +1318,7 @@ export class Jodit extends ViewWithToolbar implements IJodit {
 			if (this.element !== this.container) {
 				this.setElementValue();
 			} else {
-				buffer !== null && this.setEditorValue(buffer); // inline mode
+				buffer != null && this.setEditorValue(buffer); // inline mode
 			}
 
 			let mode = this.o.defaultMode;

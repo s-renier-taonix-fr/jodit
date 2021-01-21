@@ -7,14 +7,14 @@
 import { IContainer, IDestructible, IInitable } from '../../../types';
 import { isFunction } from './is-function';
 import { Dom } from '../../dom';
+import { isVoid } from './is-void';
 
 /**
  * Check value has method init
- *
  * @param value
  */
 export function isInitable(value: unknown): value is IInitable {
-	return value && isFunction((value as IInitable).init);
+	return !isVoid(value) && isFunction((value as IInitable).init);
 }
 
 /**
@@ -23,7 +23,7 @@ export function isInitable(value: unknown): value is IInitable {
  * @param value
  */
 export function isDestructable(value: unknown): value is IDestructible {
-	return value && isFunction((value as IDestructible).destruct);
+	return !isVoid(value) && isFunction((value as IDestructible).destruct);
 }
 
 /**
@@ -31,5 +31,5 @@ export function isDestructable(value: unknown): value is IDestructible {
  * @param value
  */
 export function hasContainer(value: unknown): value is IContainer {
-	return value && Dom.isElement((value as IContainer).container);
+	return !isVoid(value) && Dom.isElement((value as IContainer).container);
 }

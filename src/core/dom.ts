@@ -4,14 +4,15 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import * as consts from './constants';
 import type {
+	CanUndef,
 	HTMLTagNames,
 	ICreate,
 	IJodit,
 	NodeCondition,
 	Nullable
 } from '../types';
+import * as consts from './constants';
 import {
 	asArray,
 	css,
@@ -19,10 +20,10 @@ import {
 	isArray,
 	isFunction,
 	isString,
+	isVoid,
 	toArray,
 	trim
 } from './helpers';
-import { getSibling } from '../plugins/keyboard/helpers';
 
 /**
  * Module for working with DOM
@@ -195,6 +196,40 @@ export class Dom {
 	}
 
 	/**
+	 * Call function for all nodes between `start` and `end`
+	 *
+	 * @param start
+	 * @param end
+	 */
+	static between(
+		start: Node,
+		end: Node,
+		callback: (node: Node) => void | boolean
+	): void {
+		let next: CanUndef<Nullable<Node>> = start;
+
+		while (next && next !== end) {
+			if (start !== next && callback(next)) {
+				break;
+			}
+
+			let step: Nullable<Node> =
+				next.firstChild ||
+				next.nextSibling;
+
+			if (!step) {
+				while (next && !next.nextSibling) {
+					next = next.parentNode;
+				}
+
+				step = next?.nextSibling as Nullable<Node>;
+			}
+
+			next = step;
+		}
+	}
+
+	/**
 	 * Replace one tag to another transfer content
 	 *
 	 * @param  {Node} elm The element that needs to be replaced by new
@@ -271,7 +306,7 @@ export class Dom {
 		}
 
 		if (Dom.isText(node)) {
-			return node.nodeValue === null || trim(node.nodeValue).length === 0;
+			return node.nodeValue == null || trim(node.nodeValue).length === 0;
 		}
 
 		return (
@@ -279,7 +314,7 @@ export class Dom {
 			Dom.each(node as HTMLElement, (elm: Node | null): false | void => {
 				if (
 					(Dom.isText(elm) &&
-						elm.nodeValue !== null &&
+						elm.nodeValue != null &&
 						trim(elm.nodeValue).length !== 0) ||
 					(Dom.isElement(elm) &&
 						condNoEmptyElement.test(elm.nodeName.toLowerCase()))
@@ -342,7 +377,7 @@ export class Dom {
 	 */
 	static isBlock(node: unknown, win: Window): node is HTMLElement {
 		return (
-			node &&
+			!isVoid(node) &&
 			typeof node === 'object' &&
 			Dom.isNode(node, win) &&
 			consts.IS_BLOCK.test((node as Node).nodeName)
@@ -368,7 +403,7 @@ export class Dom {
 	}
 
 	/**
-	 * Check if element is HTMLelement node
+	 * Check if element is HTMLElement node
 	 * @param node
 	 */
 	static isHTMLElement(node: unknown, win: Window): node is HTMLElement {
@@ -396,7 +431,7 @@ export class Dom {
 	 */
 	static canSplitBlock(node: unknown, win: Window): boolean {
 		return (
-			node &&
+			!isVoid(node) &&
 			node instanceof (win as any).HTMLElement &&
 			Dom.isBlock(node, win) &&
 			!/^(TD|TH|CAPTION|FORM)$/.test(node.nodeName) &&
@@ -505,15 +540,15 @@ export class Dom {
 			next: Nullable<Node>;
 
 		do {
-			next = (start as any)[sibling];
+			next = start[sibling] as Node;
 
 			if (condition(next)) {
 				return next ? next : null;
 			}
 
-			if (child && next && (next as any)[child]) {
+			if (child && next && next[child]) {
 				const nextOne = Dom.find(
-					(next as any)[child],
+					next[child] as Node,
 					condition,
 					next,
 					true,
@@ -535,54 +570,6 @@ export class Dom {
 
 		return null;
 	}
-
-	/**
-	 * Find next/previous inline element
-	 *
-	 * @param node
-	 * @param toLeft
-	 * @param root
-	 */
-	static findInline = (
-		node: Nullable<Node>,
-		toLeft: boolean,
-		root: Node
-	): Nullable<Node> => {
-		let prevElement: Nullable<Node> = node,
-			nextElement: Nullable<Node> = null;
-
-		do {
-			if (prevElement) {
-				nextElement = toLeft
-					? prevElement.previousSibling
-					: prevElement.nextSibling;
-				if (
-					!nextElement &&
-					prevElement.parentNode &&
-					prevElement.parentNode !== root &&
-					Dom.isInlineBlock(prevElement.parentNode)
-				) {
-					prevElement = prevElement.parentNode;
-				} else {
-					break;
-				}
-			} else {
-				break;
-			}
-		} while (!nextElement);
-
-		while (
-			nextElement &&
-			Dom.isInlineBlock(nextElement) &&
-			(!toLeft ? nextElement.firstChild : nextElement.lastChild)
-		) {
-			nextElement = !toLeft
-				? nextElement.firstChild
-				: nextElement.lastChild;
-		}
-
-		return nextElement; // (nextElement !== root && Dom.isInlineBlock(nextElement)) ? nextElement : null;
-	};
 
 	/**
 	 * Find next/prev node what `condition(next) === true`
@@ -638,20 +625,24 @@ export class Dom {
 	 *
 	 * @param node
 	 * @param [left]
-	 * @param [normal]
+	 * @param [cond]
 	 */
-	static getNormalSibling(
+	static findSibling(
 		node: Node,
 		left: boolean = true,
-		normal: (n: Node) => boolean = (n: Node) => !Dom.isEmptyTextNode(n)
+		cond: (n: Node) => boolean = (n: Node) => !Dom.isEmptyTextNode(n)
 	): Nullable<Node> {
-		let start = getSibling(node, left);
+		const getSibling = (node: Node): Nullable<Node> => {
+			return left ? node.previousSibling : node.nextSibling;
+		};
 
-		while (start && !normal(start)) {
-			start = getSibling(start, left);
+		let start = getSibling(node);
+
+		while (start && !cond(start)) {
+			start = getSibling(start);
 		}
 
-		return start && normal(start) ? start : null;
+		return start && cond(start) ? start : null;
 	}
 
 	/**
@@ -745,6 +736,29 @@ export class Dom {
 	}
 
 	/**
+	 * Furthest parent node matching condition
+	 *
+	 * @param node
+	 * @param condition
+	 * @param root
+	 */
+	static furthest<T extends HTMLElement>(
+		node: Nullable<Node>,
+		condition: NodeCondition,
+		root: HTMLElement
+	): Nullable<T> {
+		let matchedParent: Nullable<T> = null,
+			current: Nullable<T> = node?.parentElement as Nullable<T>;
+
+		while (current && current !== root && condition(current)) {
+			matchedParent = current;
+			current = current?.parentElement as Nullable<T>;
+		}
+
+		return matchedParent;
+	}
+
+	/**
 	 * Append new element in the start of root
 	 * @param root
 	 * @param newElement
@@ -816,8 +830,24 @@ export class Dom {
 	 * @param elm
 	 * @param newElement
 	 */
-	static append(root: Node, newElement: Node | DocumentFragment): void {
-		root.appendChild(newElement);
+	static append(
+		root: Node,
+		newElements: Array<Node | DocumentFragment>
+	): void;
+
+	static append(root: Node, newElement: Node | DocumentFragment): void;
+
+	static append(
+		root: Node,
+		newElement: Node | DocumentFragment | Array<Node | DocumentFragment>
+	): void {
+		if (isArray(newElement)) {
+			newElement.forEach(node => {
+				this.append(root, node);
+			});
+		} else {
+			root.appendChild(newElement);
+		}
 	}
 
 	/**

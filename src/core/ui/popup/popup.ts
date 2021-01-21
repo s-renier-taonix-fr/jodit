@@ -6,9 +6,7 @@
 
 import './popup.less';
 
-import autobind from 'autobind-decorator';
-
-import {
+import type {
 	CanUndef,
 	IBound,
 	IBoundP,
@@ -30,11 +28,17 @@ import {
 	ucfirst
 } from '../../helpers';
 import { eventEmitter, getContainer } from '../../global';
-import { UIElement } from '../';
+import { UIElement } from '../element';
+import { autobind } from '../../decorators';
 
 type getBoundFunc = () => IBound;
 
 export class Popup extends UIElement implements IPopup {
+	/** @override */
+	className(): string {
+		return 'Popup';
+	}
+
 	isOpened: boolean = false;
 	strategy: PopupStrategy = 'leftBottom';
 
@@ -83,6 +87,7 @@ export class Popup extends UIElement implements IPopup {
 
 		if (content instanceof UIElement) {
 			elm = content.container;
+			// @ts-ignore
 			content.parentElement = this;
 		} else if (isString(content)) {
 			elm = this.j.c.fromHTML(content);
@@ -298,6 +303,7 @@ export class Popup extends UIElement implements IPopup {
 		this.childrenPopups.forEach(popup => popup.close());
 
 		this.j.e.fire(this, 'beforeClose');
+		this.j.e.fire( 'beforePopupClose', this);
 
 		this.removeGlobalListeners();
 

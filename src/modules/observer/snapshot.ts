@@ -4,7 +4,7 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import { IJodit, SnapshotType } from '../../types';
+import type { IJodit, SnapshotType } from '../../types';
 import { ViewComponent } from '../../core/component';
 import { Dom } from '../../core/dom';
 
@@ -13,6 +13,11 @@ import { Dom } from '../../core/dom';
  * Module for creating snapshot of editor which includes html content and the current selection
  */
 export class Snapshot extends ViewComponent<IJodit> {
+	/** @override */
+	className(): string {
+		return 'Snapshot';
+	}
+
 	/**
 	 * Compare two snapshotes, if and htmls and selections match, then return true
 	 *
@@ -72,7 +77,7 @@ export class Snapshot extends ViewComponent<IJodit> {
 		while (Dom.isText(elm)) {
 			elm = elm.previousSibling;
 
-			if (Dom.isText(elm) && elm.textContent !== null) {
+			if (Dom.isText(elm) && elm.textContent != null) {
 				offset += elm.textContent.length;
 			}
 		}
@@ -193,7 +198,7 @@ export class Snapshot extends ViewComponent<IJodit> {
 			this.j.setEditorValue(snapshot.html);
 		}
 
-		this.restoreOnlySelection(snapshot)
+		this.restoreOnlySelection(snapshot);
 
 		this.restoreScrollState(scroll);
 		this.isBlocked = false;

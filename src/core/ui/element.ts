@@ -4,7 +4,7 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import { ViewComponent, STATUSES } from '../component';
+import { ViewComponent } from '../component';
 import type {
 	IDictionary,
 	IUIElement,
@@ -12,7 +12,6 @@ import type {
 	Nullable
 } from '../../types';
 import { Dom } from '../dom';
-import { getClassName } from '../helpers/utils';
 import { toArray } from '../helpers/array';
 
 export abstract class UIElement<T extends IViewBased = IViewBased>
@@ -21,6 +20,7 @@ export abstract class UIElement<T extends IViewBased = IViewBased>
 	container!: HTMLElement;
 
 	private __parentElement: Nullable<IUIElement> = null;
+
 	get parentElement(): Nullable<IUIElement> {
 		return this.__parentElement;
 	}
@@ -58,7 +58,11 @@ export abstract class UIElement<T extends IViewBased = IViewBased>
 				return pe as T;
 			}
 
-			pe = pe.parentElement;
+			if (!pe.parentElement && pe.container.parentElement) {
+				pe = UIElement.closestElement(pe.container.parentElement, UIElement);
+			} else {
+				pe = pe.parentElement;
+			}
 		}
 
 		return null;
@@ -110,7 +114,7 @@ export abstract class UIElement<T extends IViewBased = IViewBased>
 			}
 		});
 
-		value !== null &&
+		value != null &&
 			value !== '' &&
 			cl.add(`${mod}_${value.toString().toLowerCase()}`);
 
@@ -123,8 +127,31 @@ export abstract class UIElement<T extends IViewBased = IViewBased>
 	 * Calc BEM element class name
 	 * @param elementName
 	 */
-	getClassName(elementName: string): string {
+	getFullElName(elementName: string): string {
 		return `${this.componentName}__${elementName}`;
+	}
+
+	/**
+	 * Return element with BEM class name
+	 * @param elementName
+	 */
+	getElm(elementName: string): HTMLElement {
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		return this.container.querySelector<HTMLElement>(
+			`.${this.getFullElName(elementName)}`
+		)!;
+	}
+
+	/**
+	 * Return elements with BEM class name
+	 * @param elementName
+	 */
+	getElms(elementName: string): HTMLElement[] {
+		return toArray(
+			this.container.querySelectorAll(
+				`.${this.getFullElName(elementName)}`
+			)
+		);
 	}
 
 	/**
@@ -165,6 +192,7 @@ export abstract class UIElement<T extends IViewBased = IViewBased>
 		return this.makeContainer(options);
 	}
 
+	/** @override */
 	constructor(jodit: T, options?: IDictionary) {
 		super(jodit);
 
@@ -173,12 +201,9 @@ export abstract class UIElement<T extends IViewBased = IViewBased>
 		Object.defineProperty(this.container, 'component', {
 			value: this
 		});
-
-		if (getClassName(this) === getClassName(UIElement.prototype)) {
-			this.setStatus(STATUSES.ready);
-		}
 	}
 
+	/** @override */
 	destruct(): any {
 		Dom.safeRemove(this.container);
 		this.parentElement = null;

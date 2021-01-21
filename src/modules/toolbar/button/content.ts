@@ -6,20 +6,26 @@
 
 import './content.less';
 
-import {
+import type {
 	IControlTypeContent,
 	IToolbarButton,
 	IViewBased,
 	Nullable
 } from '../../../types';
 import { UIButton } from '../../../core/ui/button';
-import { isString } from '../../../core/helpers/checker';
 import { Dom } from '../../../core/dom';
-import { attr } from '../../../core/helpers/utils';
+import { isString, attr } from '../../../core/helpers';
+import { component } from '../../../core/decorators';
 
+@component
 export class ToolbarContent<T extends IViewBased = IViewBased>
 	extends UIButton
 	implements IToolbarButton {
+	/** @override */
+	className(): string {
+		return 'ToolbarContent';
+	}
+
 	/** @override */
 	update(): void {
 		const content = this.control.getContent(this.j, this.control, this);
@@ -46,6 +52,7 @@ export class ToolbarContent<T extends IViewBased = IViewBased>
 		readonly target: Nullable<HTMLElement> = null
 	) {
 		super(jodit);
+
 		this.container.classList.add(
 			`${this.componentName}_${this.clearName(control.name)}`
 		);

@@ -6,8 +6,6 @@
 
 import './uploader.less';
 
-import { Config } from '../../config';
-import { IS_IE, TEXT_PLAIN } from '../../core/constants';
 import type {
 	BuildDataResult,
 	HandlerError,
@@ -21,6 +19,8 @@ import type {
 	IUploaderOptions,
 	IViewBased
 } from '../../types';
+import { Config } from '../../config';
+import { IS_IE, TEXT_PLAIN } from '../../core/constants';
 import { Ajax } from '../../core/ajax';
 import {
 	attr,
@@ -98,7 +98,7 @@ Config.prototype.uploader = {
 	},
 
 	defaultHandlerSuccess(this: Uploader, resp: IUploaderData) {
-		const j = this.j;
+		const j = this.j || this;
 
 		if (!isJoditObject(j)) {
 			return;
@@ -119,16 +119,14 @@ Config.prototype.uploader = {
 					elm.textContent = resp.baseurl + filename;
 				}
 
-				if (isJoditObject(this.j)) {
-					if (tagName === 'img') {
-						this.j.s.insertImage(
-							elm as HTMLImageElement,
-							null,
-							this.j.o.imageDefaultWidth
-						);
-					} else {
-						this.j.s.insertNode(elm);
-					}
+				if (tagName === 'img') {
+					j.s.insertImage(
+						elm as HTMLImageElement,
+						null,
+						j.o.imageDefaultWidth
+					);
+				} else {
+					j.s.insertNode(elm);
 				}
 			});
 		}
@@ -147,6 +145,11 @@ Config.prototype.uploader = {
 } as IUploaderOptions<Uploader>;
 
 export class Uploader extends ViewComponent implements IUploader {
+	/** @override */
+	className(): string {
+		return 'Uploader';
+	}
+
 	/**
 	 * Convert dataURI to Blob
 	 *

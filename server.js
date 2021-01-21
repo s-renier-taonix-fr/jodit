@@ -29,7 +29,7 @@ process.argv
 const config = require(path.resolve(cwd, './webpack.config'))(
 	[],
 	{
-		es: 'es5',
+		es: args['es'] || 'es5',
 		isTest: true
 	},
 	cwd
@@ -45,11 +45,7 @@ const port = args.port || 2000;
 const compiler = webpack(config);
 
 app.use(
-	webpackDevMiddleware(compiler, {
-		stats: { colors: true },
-		noInfo: true,
-		publicPath: config.output.publicPath
-	})
+	webpackDevMiddleware(compiler)
 );
 
 app.use(webpackHotMiddleware(compiler));

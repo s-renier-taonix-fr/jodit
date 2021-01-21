@@ -4,8 +4,8 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import { IFocusable } from './form';
-import {
+import type { IFocusable } from './form';
+import type {
 	CanUndef,
 	IContainer,
 	IDestructible,
@@ -13,8 +13,9 @@ import {
 	IViewComponent,
 	Nullable
 } from './types';
-import { Buttons } from './toolbar';
-import { IViewBased } from './view';
+import type { ButtonsGroups } from './toolbar';
+import type { IViewBased } from './view';
+import type { IKeyValidator } from './input';
 
 export interface IUIElement extends IViewComponent, IContainer, IDestructible {
 	parentElement: Nullable<IUIElement>;
@@ -33,7 +34,10 @@ export interface IUIElement extends IViewComponent, IContainer, IDestructible {
 		value: string | boolean | null,
 		container?: HTMLElement
 	): this;
-	getClassName(elementName: string): string;
+
+	getFullElName(elementName: string): string;
+	getElm(elementName: string): HTMLElement;
+	getElms(elementName: string): HTMLElement[];
 }
 
 export interface IUIIconState {
@@ -105,10 +109,7 @@ export interface IUIList extends IUIGroup {
 
 	setRemoveButtons(removeButtons?: string[]): this;
 
-	build(
-		items: Buttons | IDictionary<string>,
-		target?: Nullable<HTMLElement>
-	): IUIList;
+	build(items: ButtonsGroups, target?: Nullable<HTMLElement>): IUIList;
 }
 
 export interface IUIForm extends IUIGroup {
@@ -119,15 +120,50 @@ export interface IUIForm extends IUIGroup {
 }
 
 export interface IUIInput extends IUIElement {
+	validator: IKeyValidator;
 	nativeInput: HTMLInputElement | HTMLTextAreaElement;
+
+	state: {
+		className: string;
+		autocomplete: boolean;
+		name: string;
+		icon: string;
+		label: string;
+		ref: string;
+		type: 'text' | 'checkbox' | 'url';
+		placeholder: string;
+		required: boolean;
+		validators: string[];
+		clearButton?: boolean;
+	};
+
+	value: string;
+	error: string;
+	validate(): boolean;
+	focus(): void;
+
+	readonly isFocused: boolean;
+}
+
+export type IUIInputValidator = (input: IUIInput) => boolean;
+
+export interface IUIOption {
+	value: string,
+	text: string
+}
+
+export interface IUISelect extends IUIElement {
+	nativeInput: HTMLSelectElement;
 	options: {
 		name: string;
 		label?: string;
 		ref?: string;
-		type?: 'text' | 'checkbox' | 'url';
-		placeholder?: string;
+		options: IUIOption[];
 		required?: boolean;
+		placeholder?: string;
 		validators?: string[];
+		size?: number;
+		multiple?: boolean;
 	};
 	value: string;
 	error: string;
@@ -135,4 +171,4 @@ export interface IUIInput extends IUIElement {
 	focus(): void;
 }
 
-export type IUIInputValidator = (input: IUIInput) => boolean;
+export type IUISelectValidator = (select: IUISelect) => boolean;

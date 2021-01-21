@@ -4,28 +4,34 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import autobind from 'autobind-decorator';
-
 import './collection.less';
 
-import {
+import type {
 	IToolbarButton,
 	IToolbarCollection,
 	IUIButton,
 	Nullable,
 	IControlTypeStrong,
-	IViewBased
+	IViewBased,
+	ButtonsGroups,
+	CanUndef
 } from '../../../types/';
 
 import { isFunction, isJoditObject } from '../../../core/helpers/';
 
 import { UIList } from '../../../core/ui';
 import { makeButton } from '../factory';
-import { STATUSES } from '../../../core/component';
+import { component, autobind } from '../../../core/decorators';
 
+@component
 export class ToolbarCollection<T extends IViewBased = IViewBased>
 	extends UIList<T>
 	implements IToolbarCollection {
+	/** @override */
+	className(): string {
+		return 'ToolbarCollection';
+	}
+
 	jodit!: T;
 
 	readonly listenEvents =
@@ -126,7 +132,6 @@ export class ToolbarCollection<T extends IViewBased = IViewBased>
 	constructor(jodit: IViewBased) {
 		super(jodit as T);
 		this.initEvents();
-		this.setStatus(STATUSES.ready);
 	}
 
 	private initEvents() {
@@ -134,6 +139,21 @@ export class ToolbarCollection<T extends IViewBased = IViewBased>
 			// .on(this.j.ow, 'mousedown touchend', this.closeAllPopups)
 			.on(this.listenEvents, this.update)
 			.on('afterSetMode focus', this.immediateUpdate);
+	}
+
+	/** @override **/
+	build(items: ButtonsGroups, target: Nullable<HTMLElement> = null): this {
+		const itemsWithGroupps = this.j.e.fire(
+			'beforeToolbarBuild',
+			items
+		) as CanUndef<ButtonsGroups>;
+
+		if (itemsWithGroupps) {
+			items = itemsWithGroupps;
+		}
+
+		super.build(items, target);
+		return this;
 	}
 
 	/** @override **/

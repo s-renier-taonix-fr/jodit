@@ -25,7 +25,7 @@ export interface IAsync extends IDestructible {
 
 	promise<T>(
 		executor: (
-			resolve: (value?: T | PromiseLike<T>) => void,
+			resolve: (value: T | PromiseLike<T>) => void,
 			reject?: (reason?: any) => void
 		) => void
 	): Promise<T>;
@@ -41,4 +41,8 @@ export interface IAsync extends IDestructible {
 	): CallbackFunction;
 
 	throttle(fn: CallbackFunction, timeout: ITimeout): CallbackFunction;
+
+	requestIdleCallback(fn: CallbackFunction): number;
+	cancelIdleCallback(request: number): void;
 }
+

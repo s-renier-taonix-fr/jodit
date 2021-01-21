@@ -6,13 +6,7 @@
 
 import { Config } from '../config';
 import { Dom } from '../modules/';
-import {
-	HTMLTagNames,
-	IJodit,
-	// markerInfo,
-	IControlType,
-	IDictionary
-} from '../types';
+import type { HTMLTagNames, IJodit, IControlType, IDictionary } from '../types';
 import { dataBind, isVoid } from '../core/helpers';
 
 Config.prototype.controls.paragraph = {
@@ -143,6 +137,11 @@ Config.prototype.controls.paragraph = {
  * @param {Jodit} editor
  */
 export function formatBlock(editor: IJodit): void {
+	editor.registerButton({
+		name: 'paragraph',
+		group: 'font'
+	});
+
 	editor.registerCommand(
 		'formatblock',
 		(command: string, second: string, third: string): false | void => {

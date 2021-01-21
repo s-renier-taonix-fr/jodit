@@ -10,7 +10,7 @@ import { Config, OptionsDefault } from '../../config';
 import * as consts from '../../core/constants';
 import { Dialog, Alert } from '../dialog/';
 
-import {
+import type {
 	IFileBrowser,
 	IFileBrowserAnswer,
 	IFileBrowserCallBackData,
@@ -43,13 +43,18 @@ import { ObserveObject } from '../../core/events/';
 import { FileBrowserItem } from './builders/item';
 import { F_CLASS, ICON_LOADER } from './consts';
 import { makeDataProvider } from './factories';
-import autobind from 'autobind-decorator';
 import { stateListeners } from './listeners/state-listeners';
 import { nativeListeners } from './listeners/native-listeners';
 import { selfListeners } from './listeners/self-listeners';
 import { DEFAULT_SOURCE_NAME } from './data-provider';
+import { autobind } from '../../core/decorators';
 
 export class FileBrowser extends ViewWithToolbar implements IFileBrowser {
+	/** @override */
+	className(): string {
+		return 'FileBrowser';
+	}
+
 	private loader = this.c.div(F_CLASS + '__loader', ICON_LOADER);
 	private browser = this.c.div(F_CLASS + ' non-selected');
 	private status_line = this.c.div(F_CLASS + '__status');
@@ -515,6 +520,8 @@ export class FileBrowser extends ViewWithToolbar implements IFileBrowser {
 			theme: self.o.theme,
 			globalFullSize: self.o.globalFullSize,
 			language: this.o.language,
+			minWidth: Math.min(700, screen.width),
+			minHeight: 300,
 			buttons: ['fullsize', 'dialog.close']
 		});
 
@@ -546,7 +553,7 @@ export class FileBrowser extends ViewWithToolbar implements IFileBrowser {
 			'items',
 			'permissions'
 		].forEach(key => {
-			if (this.options[key] !== null) {
+			if (this.options[key] != null) {
 				(this.options as IDictionary)[key] = extend(
 					true,
 					{},
@@ -558,7 +565,7 @@ export class FileBrowser extends ViewWithToolbar implements IFileBrowser {
 
 		const view = this.storage.get(F_CLASS + '_view');
 
-		if (view && this.o.view === null) {
+		if (view && this.o.view == null) {
 			self.state.view = view === 'list' ? 'list' : 'tiles';
 		} else {
 			self.state.view = self.o.view === 'list' ? 'list' : 'tiles';

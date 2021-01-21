@@ -6,10 +6,10 @@
 
 import './add-new-line.less';
 
+import type { IBound, IJodit, HTMLTagNames, Nullable } from '../../types';
 import { Config } from '../../config';
 import { Dom, Icon, Plugin } from '../../modules';
 import { offset, position, call, scrollIntoView } from '../../core/helpers';
-import { IBound, IJodit, HTMLTagNames, Nullable } from '../../types';
 
 declare module '../../config' {
 	interface Config {
@@ -115,7 +115,7 @@ export class addNewLine extends Plugin {
 
 	private canGetFocus = (elm: Node | null): boolean => {
 		return (
-			elm !== null &&
+			elm != null &&
 			Dom.isBlock(elm, this.j.ew) &&
 			!/^(img|table|iframe|hr)$/i.test(elm.nodeName)
 		);
@@ -152,7 +152,7 @@ export class addNewLine extends Plugin {
 			.off(editor.container, '.' + ns)
 			.on(
 				[editor.ow, editor.ew, editor.editor],
-				`scroll` + '.' + ns,
+				'scroll' + '.' + ns,
 				this.hideForce
 			)
 			.on(editor.editor, 'dblclick' + '.' + ns, this.onDblClickEditor)

@@ -6,10 +6,10 @@
 
 import './resizer.less';
 
+import type { IBound } from '../../types';
 import { Config } from '../../config';
 import * as consts from '../../core/constants';
 import { IS_IE } from '../../core/constants';
-import { IBound } from '../../types';
 import { Dom } from '../../core/dom';
 import {
 	$$,
@@ -21,8 +21,8 @@ import {
 } from '../../core/helpers';
 import { IJodit } from '../../types';
 import { Plugin } from '../../core/plugin';
-import autobind from 'autobind-decorator';
 import { eventEmitter } from '../../core/global';
+import { autobind } from '../../core/decorators';
 
 /**
  * The module creates a supporting frame for resizing of the elements img and table
@@ -126,7 +126,7 @@ export class resizer extends Plugin {
 			.on(
 				'afterGetValueFromEditor.resizer',
 				(data: { value: string }) => {
-					const rgx = /<jodit[^>]+data-jodit_iframe_wrapper[^>]+>(.*?<iframe[^>]+>[\s\n\r]*<\/iframe>.*?)<\/jodit>/gi;
+					const rgx = /<jodit[^>]+data-jodit_iframe_wrapper[^>]+>(.*?<iframe[^>]+>.*?<\/iframe>.*?)<\/jodit>/gi;
 
 					if (rgx.test(data.value)) {
 						data.value = data.value.replace(rgx, '$1');

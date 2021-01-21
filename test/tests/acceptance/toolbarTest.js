@@ -4,6 +4,17 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 describe('Toolbar', function () {
+	it('Should have buttons', function () {
+		const editor = getJodit({
+			toolbarAdaptive: true
+		});
+
+		expect(
+			editor.toolbar.container.querySelectorAll('.jodit-toolbar-button')
+				.length
+		).equals(36);
+	});
+
 	describe('Custom buttons', function () {
 		it('should create normal button in toolbar', function () {
 			const editor = getJodit({
@@ -424,7 +435,7 @@ describe('Toolbar', function () {
 
 			simulateEvent('mousedown', 0, window);
 
-			expect(popup && popup.parentNode === null).is.true;
+			expect(popup && popup.parentNode == null).is.true;
 		});
 
 		describe('Open list', function () {
@@ -440,7 +451,7 @@ describe('Toolbar', function () {
 				expect(
 					list &&
 						window.getComputedStyle(list).display === 'block' &&
-						list.parentNode !== null
+						list.parentNode != null
 				).is.true;
 			});
 
@@ -473,7 +484,7 @@ describe('Toolbar', function () {
 					expect(
 						list &&
 							window.getComputedStyle(list).display === 'block' &&
-							list.parentNode !== null
+							list.parentNode != null
 					).is.true;
 
 					expect(list.textContent.match('Custom')).is.not.null;
@@ -484,7 +495,7 @@ describe('Toolbar', function () {
 						toolbarAdaptive: false,
 						controls: {
 							fontsize: {
-								list: Jodit.Array('8,9,10'.split(','))
+								list: Jodit.atom('8,9,10'.split(','))
 							}
 						}
 					});
@@ -512,7 +523,7 @@ describe('Toolbar', function () {
 
 			simulateEvent('mousedown', 0, window);
 
-			expect(list && list.parentNode === null).is.true;
+			expect(list && list.parentNode == null).is.true;
 		});
 
 		it('Open format list set H1 for current cursor position. Restore selection after that', function () {
@@ -801,7 +812,7 @@ describe('Toolbar', function () {
 			});
 		});
 
-		describe('Set empty Jodit.Array', function () {
+		describe('Set empty Jodit.atom', function () {
 			it('Should remove all buttons', function () {
 				const editor = getJodit({
 					buttons: []
@@ -811,7 +822,7 @@ describe('Toolbar', function () {
 				editor.destruct();
 
 				const editor2 = getJodit({
-					buttons: Jodit.Array([])
+					buttons: Jodit.atom([])
 				});
 
 				expect(getButton('source', editor2)).is.null;
@@ -1593,7 +1604,7 @@ describe('Toolbar', function () {
 			it('should hide toolbar buttons', function () {
 				const editor = getJodit({
 					filebrowser: {
-						buttons: Jodit.Array([
+						buttons: Jodit.atom([
 							'filebrowser.list',
 							'filebrowser.tiles',
 							'filebrowser.sort'

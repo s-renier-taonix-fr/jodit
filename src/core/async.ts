@@ -4,7 +4,12 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import { CallbackFunction, IAsync, IAsyncParams, ITimeout } from '../types';
+import type {
+	CallbackFunction,
+	IAsync,
+	IAsyncParams,
+	ITimeout
+} from '../types';
 import { setTimeout, clearTimeout, isFunction } from './helpers/';
 
 export class Async implements IAsync {
@@ -157,7 +162,7 @@ export class Async implements IAsync {
 
 	promise<T>(
 		executor: (
-			resolve: (value?: T | PromiseLike<T>) => void,
+			resolve: (value: T | PromiseLike<T>) => void,
 			reject?: (reason?: any) => void
 		) => void
 	): Promise<T> {
@@ -215,7 +220,43 @@ export class Async implements IAsync {
 		);
 	}
 
+	private requestsIdle: Set<number> = new Set();
+
+	private requestIdleCallbackNative =
+		(window as any)['requestIdleCallback']?.bind(window) ??
+		((callback: CallbackFunction): number => {
+			const start = Date.now();
+
+			return this.setTimeout(() => {
+				callback({
+					didTimeout: false,
+					timeRemaining: () => Math.max(0, 50 - (Date.now() - start))
+				});
+			}, 1);
+		});
+
+	private cancelIdleCallbackNative =
+		(window as any)['cancelIdleCallback']?.bind(window) ??
+		((request: number): void => {
+			this.clearTimeout(request);
+		});
+
+	requestIdleCallback(callback: CallbackFunction): number {
+		const request = this.requestIdleCallbackNative(callback);
+		this.requestsIdle.add(request);
+		return request;
+	}
+
+	cancelIdleCallback(request: number): void  {
+		this.requestsIdle.delete(request);
+		return this.cancelIdleCallbackNative(request);
+	}
+
 	clear(): void {
+		this.requestsIdle.forEach(key => {
+			this.cancelIdleCallback(key);
+		});
+
 		this.timers.forEach(key => {
 			clearTimeout(this.timers.get(key) as number);
 		});

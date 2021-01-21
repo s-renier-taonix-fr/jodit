@@ -5,11 +5,11 @@
  */
 
 import './size.less';
-import autobind from 'autobind-decorator';
 
+import type { IJodit } from '../../types';
 import { css, isNumber } from '../../core/helpers';
-import { IJodit } from '../../types';
 import { Plugin } from '../../core/plugin';
+import { autobind } from '../../core/decorators';
 
 /**
  * Calculate sizes for editor workspace and handle setHeight and setWidth events

@@ -1,16 +1,15 @@
-@import (reference) '../../../styles/form';
+@import (reference) '../../../../../styles/form';
 
-.jodit-ui-input {
+.jodit-ui-select {
 	display: flex;
 	flex-direction: column;
 	margin-bottom: var(--padding-default);
 
-	&__input {
-		.jodit-input-mx();
+	&__select {
 		min-width: 200px;
 	}
 
-	&_has-error_true &__input {
+	&_has-error_true &__select {
 		border-color: var(--color-red);
 	}
 
@@ -27,6 +26,6 @@
 	}
 }
 
-.jodit-ui-block .jodit-ui-input {
+.jodit-ui-block .jodit-ui-select {
 	margin-bottom: 0;
 }

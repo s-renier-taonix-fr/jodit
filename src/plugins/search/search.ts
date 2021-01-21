@@ -6,20 +6,21 @@
 
 import './search.less';
 
-import { Config } from '../../config';
-import * as consts from '../../core/constants';
-import { MODE_WYSIWYG } from '../../core/constants';
-import { Dom } from '../../core/dom';
-import { Plugin } from '../../core/plugin';
-import {
+import type {
 	ISelectionRange,
 	markerInfo,
 	IJodit,
 	Nullable,
 	IControlType
 } from '../../types';
+import { Config } from '../../config';
+import * as consts from '../../core/constants';
+import { MODE_WYSIWYG } from '../../core/constants';
+import { Dom } from '../../core/dom';
+import { Plugin } from '../../core/plugin';
 import { Icon } from '../../core/ui';
-import { refs, trim } from '../../core/helpers';
+import { css, position, refs, trim } from '../../core/helpers';
+import { autobind } from '../../core/decorators';
 
 declare module '../../config' {
 	interface Config {
@@ -84,6 +85,13 @@ Config.prototype.controls.find = {
  * ```
  */
 export class search extends Plugin {
+	buttons = [
+		{
+			name: 'find',
+			group: 'search'
+		}
+	];
+
 	static getSomePartOfStringIndex(
 		needle: string,
 		haystack: string,
@@ -117,10 +125,10 @@ export class search extends Plugin {
 			const some: boolean = needle[needleStart] === haystack[i];
 			if (
 				some ||
-				(startAtIndex !== null &&
+				(startAtIndex != null &&
 					consts.SPACE_REG_EXP().test(haystack[i]))
 			) {
-				if (startAtIndex === null || !start) {
+				if (startAtIndex == null || !start) {
 					startAtIndex = i;
 				}
 
@@ -196,7 +204,7 @@ export class search extends Plugin {
 		Dom.findWithCurrent(
 			node,
 			(child: Node | null): boolean => {
-				return !!child && callback(child);
+				return Boolean(child && callback(child));
 			},
 			this.j.editor,
 			next ? 'nextSibling' : 'previousSibling',
@@ -401,7 +409,7 @@ export class search extends Plugin {
 				(elm: Node): boolean => {
 					if (
 						Dom.isText(elm) &&
-						elm.nodeValue !== null &&
+						elm.nodeValue != null &&
 						elm.nodeValue.length
 					) {
 						let value: string = elm.nodeValue;
@@ -465,7 +473,7 @@ export class search extends Plugin {
 									elm.nodeValue.length - value.length;
 							}
 
-							if (bound.startContainer === null) {
+							if (bound.startContainer == null) {
 								bound.startContainer = elm;
 								bound.startOffset = currentPartIndex;
 							}
@@ -517,7 +525,10 @@ export class search extends Plugin {
 			this.isOpened = true;
 		}
 
+		this.calcSticky(this.j.e.fire('getStickyState.sticky') || false);
+
 		this.j.e.fire('hidePopup');
+
 		this.searchBox.classList.toggle(
 			'jodit-search_replace',
 			searchAndReplace
@@ -555,6 +566,7 @@ export class search extends Plugin {
 		this.isOpened = false;
 	};
 
+	/** @override */
 	afterInit(editor: IJodit): void {
 		if (editor.o.useSearch) {
 			const self: search = this;
@@ -698,45 +710,72 @@ export class search extends Plugin {
 				})
 				.on('search.search', (value: string, next: boolean = true) => {
 					editor.execCommand('search', value, next);
-				});
+				})
+				.on('toggleSticky.search', this.calcSticky);
 
-			editor.registerCommand('search', {
-				exec: (
-					command: string,
-					value?: string,
-					next: boolean = true
-				) => {
-					self.findAndSelect(
-						editor.s.current() || editor.editor.firstChild,
-						value || '',
-						next
-					);
+			editor
+				.registerCommand('search', {
+					exec: (
+						command: string,
+						value?: string,
+						next: boolean = true
+					) => {
+						self.findAndSelect(
+							editor.s.current() || editor.editor.firstChild,
+							value || '',
+							next
+						);
 
-					return false;
-				}
-			});
-			editor.registerCommand('openSearchDialog', {
-				exec: () => {
-					self.open();
-					return false;
-				},
-				hotkeys: ['ctrl+f', 'cmd+f']
-			});
-
-			editor.registerCommand('openReplaceDialog', {
-				exec: () => {
-					if (!editor.o.readonly) {
-						self.open(true);
+						return false;
 					}
-					return false;
-				},
-				hotkeys: ['ctrl+h', 'cmd+h']
-			});
+				})
+				.registerCommand('openSearchDialog', {
+					exec: () => {
+						self.open();
+						return false;
+					},
+					hotkeys: ['ctrl+f', 'cmd+f']
+				})
+				.registerCommand('openReplaceDialog', {
+					exec: () => {
+						if (!editor.o.readonly) {
+							self.open(true);
+						}
+						return false;
+					},
+					hotkeys: ['ctrl+h', 'cmd+h']
+				});
 		}
 	}
 
+	/** @override */
 	beforeDestruct(jodit: IJodit): void {
 		Dom.safeRemove(this.searchBox);
 		jodit.events?.off('.search');
+	}
+
+	/**
+	 * Calculate position if sticky is enabled
+	 * @param enabled
+	 */
+	@autobind
+	private calcSticky(enabled: boolean): void {
+		if (this.isOpened) {
+			this.searchBox.classList.toggle('jodit-search_sticky', enabled);
+
+			if (enabled) {
+				const pos = position(this.j.toolbarContainer);
+
+				css(this.searchBox, {
+					top: pos.top + pos.height,
+					left: pos.left + pos.width
+				});
+			} else {
+				css(this.searchBox, {
+					top: null,
+					left: null
+				});
+			}
+		}
 	}
 }

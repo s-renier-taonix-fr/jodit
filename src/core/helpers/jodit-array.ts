@@ -4,51 +4,18 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import { extend } from './extend';
+import { markAsAtomic } from './extend';
+import { error } from './type';
 
-export class JoditArray {
-	constructor(data: any[]) {
-		extend(true, this, data);
-
-		Object.defineProperty(this, 'length', {
-			value: data.length,
-			enumerable: false,
-			configurable: false
-		});
-
-		Object.defineProperty(this, 'toString', {
-			value: (): string => {
-				const out: any[] = [];
-
-				for (let i = 0; i < (this as any).length; i += 1) {
-					out[i] = (this as any)[i];
-				}
-
-				return out.toString();
-			},
-			enumerable: false,
-			configurable: false
-		});
-
-		const proto = Array.prototype as any;
-
-		[
-			'map',
-			'forEach',
-			'reduce',
-			'push',
-			'pop',
-			'shift',
-			'unshift',
-			'slice',
-			'splice',
-			'concat'
-		].forEach(method => {
-			Object.defineProperty(this, method, {
-				value: proto[method],
-				enumerable: false,
-				configurable: false
-			});
-		});
+/**
+ * @deprecated Use `Jodit.atom` instead
+ */
+export function JoditArray(data: any[]) {
+	if (!isProd) {
+		throw error('Deprecated class. Use `Jodit.atom` instead');
 	}
+
+	markAsAtomic(data);
+
+	return data;
 }

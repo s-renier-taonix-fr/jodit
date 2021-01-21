@@ -5,6 +5,7 @@
  */
 
 import {
+	CanPromise,
 	HTMLTagNames,
 	IComponent,
 	IDestructible,
@@ -140,7 +141,7 @@ interface IControlType<
 	 *  });
 	 *  ```
 	 */
-	list?: IDictionary<string> | string[];
+	list?: IDictionary<string> | string[] | IControlType[];
 
 	/**
 	 * The command executes when the button is pressed. Allowed all
@@ -245,6 +246,7 @@ interface IControlType<
 }
 
 import { IUIButton, IUIElement, IUIList } from './ui';
+import { IPluginButton } from './plugin';
 
 interface IControlTypeStrong extends IControlType {
 	name: NonNullable<IControlType['name']>;
@@ -258,7 +260,13 @@ export type Controls = IDictionary<IControlType>;
 
 export type Buttons = Array<string | IControlType>;
 
-export type ButtonsOption = Buttons | string;
+export interface ButtonsGroup {
+	group: string;
+	buttons: Buttons;
+}
+
+export type ButtonsGroups = Array<IControlType | string | ButtonsGroup>;
+export type ButtonsOption = string | ButtonsGroups;
 
 interface IControlTypeStrongList extends IControlTypeStrong {
 	list: IDictionary<string> | string[];
@@ -286,6 +294,8 @@ export interface IStatusBar extends IComponent {
 
 	show(): void;
 	hide(): void;
+	isShown: boolean;
+
 	getHeight(): number;
 	append(el: HTMLElement, inTheRight?: boolean): void;
 }
@@ -295,5 +305,6 @@ export interface IProgressBar extends IDestructible {
 
 	show(): IProgressBar;
 	hide(): IProgressBar;
+
 	progress(percentage: number): IProgressBar;
 }

@@ -4,8 +4,8 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
+import type { IJodit, SnapshotType } from '../../types';
 import { Config } from '../../config';
-import { IJodit, SnapshotType } from '../../types';
 import { ViewComponent } from '../../core/component';
 import { Snapshot } from './snapshot';
 import { Stack } from './stack';
@@ -15,16 +15,19 @@ import { debounce } from '../../core/decorators';
 /**
  * @property {object} observer module settings {@link Observer|Observer}
  * @property {int} observer.timeout=100 Delay on every change
+ * @property {int} observer.maxHistoryLength=Infinity Limit of history length
  */
 declare module '../../config' {
 	interface Config {
 		observer: {
+			maxHistoryLength: number;
 			timeout: number;
 		};
 	}
 }
 
 Config.prototype.observer = {
+	maxHistoryLength: Infinity,
 	timeout: 100
 };
 
@@ -37,6 +40,11 @@ Config.prototype.observer = {
  * @params {Jodit} parent Jodit main object
  */
 export class Observer extends ViewComponent<IJodit> {
+	/** @override */
+	className(): string {
+		return 'Observer';
+	}
+
 	private __startValue!: SnapshotType;
 
 	get startValue(): SnapshotType {
@@ -47,7 +55,7 @@ export class Observer extends ViewComponent<IJodit> {
 		this.__startValue = value;
 	}
 
-	stack: Stack = new Stack();
+	stack: Stack = new Stack(this.j.o.observer.maxHistoryLength);
 	snapshot: Snapshot = new Snapshot(this.j);
 
 	private updateTick: number = 0;

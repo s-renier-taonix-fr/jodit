@@ -4,10 +4,18 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import { extend } from './extend';
+import { error } from './type';
+import { markAsAtomic } from './extend';
 
-export class JoditObject {
-	constructor(data: any) {
-		extend(true, this, data);
+/**
+ * @deprecated Use `Jodit.atom` instead
+ */
+export function JoditObject<T>(data: T): T {
+	if (!isProd) {
+		throw error('Deprecated class. Use `Jodit.atom` instead');
 	}
+
+	markAsAtomic(data);
+
+	return data;
 }

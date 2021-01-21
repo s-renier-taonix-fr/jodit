@@ -4,9 +4,12 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-export * from './watch';
-export * from './debounce';
 export * from './cache';
-export * from './wait';
+export * from './component';
+export * from './debounce';
 export * from './hook';
 export * from './nonenumerable';
+export * from './persistent';
+export * from './wait';
+export * from './watch';
+export { default as autobind } from 'autobind-decorator';

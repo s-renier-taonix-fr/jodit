@@ -4,20 +4,37 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-const path = require('path');
-const webpack = require(path.resolve(process.cwd(), './webpack.config'));
-const webpackConfig = (es = 'es5') =>
-	webpack([], {
-		mode: 'production',
-		isTest: true,
-		uglify: true,
-		es
-	}, process.cwd());
+// FIXME Need check https://github.com/ryanclark/karma-webpack/issues/452 status and restore karma-webpack
 
-module.exports = function(config) {
+const path = require('path');
+const webpackConfFunc = require(path.resolve(process.cwd(), './webpack.config'));
+const webpackConfig = (() => {
+	const config = webpackConfFunc(
+		[],
+		{
+			mode: 'production',
+			isTest: true,
+			uglify: true,
+			es: 'es5'
+		},
+		process.cwd()
+	);
+
+	delete config.context;
+	// delete config.entry;
+
+	delete config.output.path;
+	delete config.output.filename;
+	delete config.output.publicPath;
+	// delete config.output;
+
+	return config;
+})();
+
+module.exports = function (config) {
 	config.set({
 		basePath: '',
-		frameworks: ['mocha', 'chai'],
+		frameworks: ['mocha', 'chai', "webpack"],
 
 		mime: {
 			'text/css': ['css'],
@@ -43,6 +60,8 @@ module.exports = function(config) {
 			'src/index.ts',
 			'node_modules/synchronous-promise/dist/synchronous-promise.js',
 			'test/bootstrap.js',
+			'config.js',
+			'src/**/*.test.js',
 			'test/tests/units/*.js',
 			'test/tests/acceptance/*.js',
 			'test/tests/acceptance/plugins/*.js'
@@ -58,13 +77,8 @@ module.exports = function(config) {
 		hostname: '127.0.0.1',
 		colors: true,
 		logLevel: config.LOG_INFO,
-		browsers: ['ChromeHeadless', 'FirefoxHeadless', 'IE', 'IE9', 'Firefox'],
+		browsers: ['ChromeHeadless', 'FirefoxHeadless', 'Firefox'],
 		customLaunchers: {
-			IE9: {
-				base: 'IE',
-				'x-ua-compatible': 'IE=EmulateIE9'
-			},
-
 			FirefoxHeadless: {
 				base: 'Firefox',
 				flags: ['-width', 1440, '-height', 900, '-headless']
@@ -90,16 +104,15 @@ module.exports = function(config) {
 		},
 
 		plugins: [
-			'karma-ie-launcher',
 			'karma-chrome-launcher',
 			'karma-firefox-launcher',
+			'karma-webpack',
 			'karma-mocha',
 			'karma-chai',
-			'karma-webpack',
 			'karma-sourcemap-loader'
 		],
 
-		webpack: webpackConfig(),
+		webpack: webpackConfig,
 
 		client: {
 			captureConsole: true,

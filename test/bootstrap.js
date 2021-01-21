@@ -262,6 +262,10 @@ if (typeof window.chai !== 'undefined') {
 
 const i18nkeys = [];
 const excludeI18nKeys = [
+	'Class name',
+	'https://',
+	'http://',
+	'rect',
 	'empty',
 	'adddate',
 	'URL',
@@ -473,11 +477,12 @@ function sortStyles(matches) {
 			}
 
 			if (/rgb\(/.test(keyValue[1])) {
-				keyValue[1] = keyValue[1].replace(/rgb\([^)]+\)/, function (
-					match
-				) {
-					return Jodit.modules.Helpers.normalizeColor(match);
-				});
+				keyValue[1] = keyValue[1].replace(
+					/rgb\([^)]+\)/,
+					function (match) {
+						return Jodit.modules.Helpers.normalizeColor(match);
+					}
+				);
 			}
 
 			if (keyValue[0].match(/^border$/)) {
@@ -485,7 +490,7 @@ function sortStyles(matches) {
 			}
 
 			if (keyValue[0].match(/^border-(style|width|color)/)) {
-				if (border === null) {
+				if (border == null) {
 					border = keyValue;
 					keyValue[0] = 'border';
 					keyValue[1] = [keyValue[1]];
@@ -516,7 +521,7 @@ function sortStyles(matches) {
 			return keyValue;
 		})
 		.filter(function (a) {
-			return a !== null;
+			return a != null;
 		})
 		.map(function (a) {
 			return a
@@ -628,6 +633,7 @@ const codeKey = {
 	73: 'i',
 	70: 'f',
 	72: 'h',
+	75: 'k',
 	86: 'v',
 	89: 'y',
 	114: 'F3'
@@ -640,7 +646,7 @@ const keyCode = Object.keys(codeKey).reduce((res, code) => {
 
 /**
  *
- * @param {string} type
+ * @param {string|string[]} type
  * @param {string|number|HTMLElement} keyCodeOrElement
  * @param {HTMLElement} [element]
  * @param {Function} [applyOpt]
@@ -681,7 +687,7 @@ function simulateEvent(type, keyCodeOrElement, elementOrApplyOpt, applyOpt) {
 			evt.key = codeKey[keyCodeOrElement];
 		} else if (typeof keyCodeOrElement !== 'object') {
 			evt.key = keyCodeOrElement;
-			evt.which = keyCodeOrElement[keyCodeOrElement];
+			evt.which = keyCode[keyCodeOrElement];
 		}
 	}
 
@@ -852,6 +858,50 @@ function setCursor(elm, inEnd) {
 	range.collapse(!inEnd);
 	window.getSelection().removeAllRanges();
 	window.getSelection().addRange(range);
+}
+
+/**
+ * Set cursor inside editor by some char
+ *
+ * @param {Jodit} editor
+ * @param {string} [char]
+ * @return boolean
+ */
+function setCursorToChar(editor, char = '|') {
+	const r = editor.s.createRange();
+	let foundEdges = [];
+
+	Jodit.modules.Dom.each(editor.editor, function (node) {
+		if (node.nodeType === Node.TEXT_NODE && node.nodeValue.includes(char)) {
+			let index = -1;
+			do {
+				index = node.nodeValue.indexOf(char, index + 1);
+
+				if (index !== -1) {
+					node.nodeValue = node.nodeValue.replace(char, '');
+					foundEdges.push([node, index]);
+				}
+			} while (index !== -1);
+		}
+
+		return true;
+	});
+
+	if (foundEdges.length) {
+		if (foundEdges[0]) {
+			r.setStart(foundEdges[0][0], foundEdges[0][1]);
+		}
+
+		if (foundEdges[1]) {
+			r.setEnd(foundEdges[1][0], foundEdges[1][1]);
+		}
+
+		editor.s.selectRange(r);
+
+		return true;
+	}
+
+	return false;
 }
 
 function createPoint(x, y, color, fixed = false) {

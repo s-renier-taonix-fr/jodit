@@ -411,6 +411,221 @@ describe('Test helpers', function () {
 				}
 			});
 		});
+
+		describe('extend', function () {
+			const extend = Jodit.modules.Helpers.extend;
+
+			it('should override part of first array', function () {
+				const a = [1, 2, 3];
+				const b = [4, 5, 6, 7];
+
+				expect(extend(true, a, b)).deep.equals([4, 5, 6, 7]);
+			});
+
+			describe('No deep', function () {
+				it('should merge two objects only in first level', function () {
+					const a = {
+						a: 1,
+						b: 2,
+						e: {
+							a: 6
+						}
+					};
+					const b = {
+						c: 3,
+						e: {
+							b: 8
+						}
+					};
+
+					expect(extend(a, b)).deep.equals({
+						a: 1,
+						b: 2,
+						e: { b: 8 },
+						c: 3
+					});
+				});
+			});
+
+			describe('Deep', function () {
+				it('should merge two objects', function () {
+					const a = {
+						a: 1,
+						b: 2,
+						e: {
+							g: [1, 2, 3, 7],
+							a: 6
+						}
+					};
+					const b = {
+						c: 3,
+						e: {
+							g: [4, 5, 6],
+							b: 8
+						}
+					};
+
+					expect(extend(true, a, b)).deep.equals({
+						a: 1,
+						b: 2,
+						e: { a: 6, b: 8, g: [4, 5, 6, 7] },
+						c: 3
+					});
+				});
+
+				describe('Atom marker', function () {
+					it('should work as no deep', function () {
+						const a = {
+							a: 1,
+							b: 2,
+							e: {
+								a: 6,
+								f: {
+									y: 1
+								}
+							}
+						};
+
+						const b = {
+							c: 3,
+							e: {
+								b: 8,
+								f: Jodit.atom({
+									q: 3
+								})
+							}
+						};
+
+						expect(extend(true, a, b)).deep.equals({
+							a: 1,
+							b: 2,
+							e: {
+								a: 6,
+								b: 8,
+								f: {
+									q: 3
+								}
+							},
+							c: 3
+						});
+					});
+
+					describe('Save marker after merge', function () {
+						it('should work save this marker for sequence merge', function () {
+							const a = {
+								a: {
+									b: 1
+								}
+							};
+
+							const b = {
+								a: Jodit.atom({
+									q: 3
+								})
+							};
+
+							const merged = extend(true, a, b);
+
+							const c = {
+								a: {
+									c: 5
+								}
+							};
+
+							expect(extend(true, c, merged)).deep.equals({
+								a: {
+									q: 3
+								}
+							});
+						});
+
+						describe('Override marker', function () {
+							it('should not be possible', function () {
+								const a = {
+									a: {
+										b: 1
+									}
+								};
+
+								const b = {
+									a: Jodit.atom({
+										q: 3
+									})
+								};
+
+								const merged = extend(true, a, b);
+
+								const c = {
+									a: {
+										c: 5
+									}
+								};
+
+								expect(extend(true, merged, c)).deep.equals({
+									a: {
+										q: 3
+									}
+								});
+							});
+						});
+					});
+
+					describe('Use Jodit.atom', function () {
+						it('should work same', function () {
+							const a = {
+								a: 1,
+								b: 2,
+								e: {
+									a: 6,
+									f: {
+										y: 1
+									}
+								}
+							};
+
+							const b = {
+								c: 3,
+								e: {
+									b: 8,
+									f: Jodit.atom({
+										q: 3
+									})
+								}
+							};
+
+							expect(extend(true, a, b)).deep.equals({
+								a: 1,
+								b: 2,
+								e: {
+									a: 6,
+									b: 8,
+									f: {
+										q: 3
+									}
+								},
+								c: 3
+							});
+						});
+
+						describe('For Array', function () {
+							it('should override first array', function () {
+								const a = {
+									e: [1, 2, 3]
+								};
+
+								const b = {
+									e: Jodit.atom([6, 7])
+								};
+
+								expect(extend(true, a, b)).deep.equals({
+									e: [6, 7]
+								});
+							});
+						});
+					});
+				});
+			});
+		});
 	});
 
 	describe('Utils', function () {
@@ -444,6 +659,7 @@ describe('Test helpers', function () {
 				).is.true;
 			});
 		});
+
 		describe('getClassName', function () {
 			const getClassName = Jodit.modules.Helpers.getClassName;
 
@@ -457,9 +673,6 @@ describe('Test helpers', function () {
 				expect(
 					getClassName(Jodit.modules.ToolbarButton.prototype)
 				).equals('ToolbarButton');
-				expect(getClassName(Jodit.modules.Component.prototype)).equals(
-					'Component'
-				);
 			});
 		});
 	});

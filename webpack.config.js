@@ -10,8 +10,8 @@ const webpack = require('webpack');
 
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
-const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const MinimizeJSPlugin = require('terser-webpack-plugin');
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const PostBuild = require('./src/utils/post-build');
 
 /**
@@ -72,15 +72,33 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 		}
 	];
 
+	const plugins = [
+		new webpack.ProgressPlugin(),
+		new webpack.DefinePlugin({
+			appVersion: JSON.stringify(pkg.version),
+			isProd: isProd,
+			'process.env': {
+				TARGET_ES: JSON.stringify(ES),
+				NODE_ENV: JSON.stringify(mode)
+			}
+		})
+	];
+
 	const config = {
 		cache: !isProd,
 		mode,
 		context: dir,
 
-		devtool: debug ? 'inline-sourcemap' : false,
+		stats: {
+			colors: true
+		},
+
+		devtool: debug ? 'inline-source-map' : false,
 
 		entry: {
-			jodit: ['./src/index']
+			jodit: debug
+				? ['webpack-hot-middleware/client.js', './src/index']
+				: ['./src/index']
 		},
 
 		output: {
@@ -91,16 +109,15 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 		},
 
 		resolve: {
-			extensions: ['.ts', '.d.ts', '.js', '.json', '.less', '.svg']
+			extensions: ['.js', '.ts', '.d.ts', '.json', '.less', '.svg']
 		},
 
 		optimization: {
 			minimize: !debug && uglify,
-
+			moduleIds: debug ? 'named' : 'natural',
 			minimizer: [
 				new MinimizeJSPlugin({
 					parallel: true,
-					sourceMap: false,
 					extractComments: false,
 
 					exclude: './src/langs',
@@ -121,7 +138,7 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 
 							pure_getters: true,
 							unsafe_comps: true,
-							passes: 5
+							passes: 7
 						},
 
 						output: {
@@ -129,6 +146,19 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 							beautify: false,
 							preamble: banner
 						}
+					}
+				}),
+				new CssMinimizerPlugin({
+					cache: true,
+					parallel: true,
+					minimizerOptions: {
+						preset: [
+							'advanced',
+							{
+								discardComments: { removeAll: true },
+								zindex: false
+							}
+						]
 					}
 				})
 			]
@@ -139,6 +169,16 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 				{
 					test: /\.less$/,
 					use: css_loaders
+				},
+
+				{
+					test: /\.(js|ts)$/,
+					loader: 'ts-loader',
+					options: {
+						transpileOnly: true,
+						allowTsInNodeModules: true
+					},
+					include: [path.resolve(__dirname, './node_modules')]
 				},
 
 				{
@@ -165,7 +205,7 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 							target: ES
 						}
 					},
-					include: path.resolve(__dirname, './src/'),
+					include: [path.resolve(__dirname, './src/')],
 					exclude: [
 						/langs\/[a-z]{2}\.ts/,
 						/langs\/[a-z]{2}_[a-z]{2}\.ts/
@@ -185,29 +225,8 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 		},
 
 		plugins: debug
-			? [
-					new webpack.DefinePlugin({
-						appVersion: JSON.stringify(pkg.version),
-						isProd: isProd,
-						'process.env': {
-							TARGET_ES: JSON.stringify(ES),
-							NODE_ENV: JSON.stringify(mode)
-						}
-					}),
-					new webpack.NamedModulesPlugin(),
-					new webpack.HotModuleReplacementPlugin()
-				]
-			: [
-					new webpack.optimize.OccurrenceOrderPlugin(),
-					new webpack.DefinePlugin({
-						appVersion: JSON.stringify(pkg.version),
-						isProd: isProd,
-						'process.env': {
-							TARGET_ES: JSON.stringify(ES),
-							NODE_ENV: JSON.stringify(mode)
-						}
-					})
-				]
+			? [...plugins, new webpack.HotModuleReplacementPlugin()]
+			: plugins
 	};
 
 	if (!debug && !isTest) {
@@ -223,21 +242,6 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 		}
 
 		config.plugins.push(
-			new OptimizeCssAssetsPlugin({
-				assetNameRegExp: /\.css$/,
-				cssProcessorPluginOptions: {
-					preset: [
-						'default',
-						{
-							discardComments: {
-								removeAll: true
-							},
-							normalizeWhitespace: uglify
-						}
-					]
-				}
-			}),
-
 			new webpack.BannerPlugin({
 				banner,
 				raw: true,
@@ -249,14 +253,22 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 			config.plugins.push(
 				new PostBuild(() => {
 					const postcss = require('postcss');
+
 					const plugins = postcss([
-						require('autoprefixer'),
+						require('autoprefixer')({
+							overrideBrowserslist: [
+								'>1%',
+								'last 4 versions',
+								'Firefox ESR',
+								'ie >= 11'
+							]
+						}),
 						require('postcss-css-variables')
 					]);
 
 					const file = path.resolve(
 						config.output.path,
- 						filename('jodit') + '.css'
+						filename('jodit') + '.css'
 					);
 
 					fs.readFile(file, (err, css) => {
@@ -268,7 +280,11 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 						plugins
 							.process(css, { from: file, to: file })
 							.then(result => {
-								fs.writeFile(file, result.css, () => true);
+								fs.writeFile(
+									file,
+									banner + result.css,
+									() => true
+								);
 							});
 					});
 				})
@@ -279,7 +295,7 @@ module.exports = (env, argv, dir = __dirname, onlyTS = false) => {
 	Object.defineProperty(config, 'css_loaders', {
 		enumerable: false,
 		value: css_loaders
-	})
+	});
 
 	return config;
 };

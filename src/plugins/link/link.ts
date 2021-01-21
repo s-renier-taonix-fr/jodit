@@ -4,6 +4,14 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
+import type {
+	IDictionary,
+	IJodit,
+	IControlType,
+	IUIForm,
+	IUIOption,
+	Nullable
+} from '../../types';
 import { Config } from '../../config';
 import { Dom } from '../../core/dom';
 import {
@@ -14,15 +22,10 @@ import {
 	refs,
 	stripTags
 } from '../../core/helpers';
-import { Select } from '../../core/selection/';
-import {
-	IDictionary,
-	IJodit,
-	IControlType,
-	Nullable,
-	IUIForm
-} from '../../types';
 import { formTemplate } from './template';
+import { Plugin } from '../../core/plugin';
+import { autobind } from '../../core/decorators';
+import { Dialog, UIForm } from '../../modules';
 
 /**
  * @property {object}  link `{@link link|link}` plugin's options
@@ -31,19 +34,59 @@ import { formTemplate } from './template';
  * @property {boolean} link.processPastedLink=true Wrap inserted link in &lt;a href="link">link&lt;/a>
  * @property {boolean} link.removeLinkAfterFormat=true When the button is pressed toWYSIWYG clean format,
  * if it was done on the link is removed like command `unlink`
+ * @property {"input"|"select"|""} link.modeClassName="input" Use an input text to ask the classname or a select or not ask
+ * @property {boolean} link.selectMultipleClassName=true Allow multiple choises (to use with modeClassName="select")
+ * @property {number} link.selectSizeClassName=3 The size of the select (to use with modeClassName="select")
+ * @property {IUIOption[]} link.selectOptionsClassName=[] The list of the option for the select (to use with modeClassName="select")
+ * ex: [
+ *			{ value: "", text: "" },
+ *			{ value: "val1", text: "text1" },
+ *			{ value: "val2", text: "text2" },
+ *			{ value: "val3", text: "text3" }
+ *		]
  */
 
 declare module '../../config' {
 	interface Config {
 		link: {
+			/**
+			 * Template for the link dialog form
+			 * @param editor
+			 */
 			formTemplate: (editor: IJodit) => string | HTMLElement | IUIForm;
 			formClassName?: string;
+
+			/**
+			 * Follow link address after dblclick
+			 */
 			followOnDblClick: boolean;
+
+			/**
+			 * Replace inserted youtube/vimeo link toWYSIWYG `iframe`
+			 */
 			processVideoLink: boolean;
+
+			/**
+			 * Wrap inserted link in &lt;a href="link">link&lt;/a>
+			 */
 			processPastedLink: boolean;
-			removeLinkAfterFormat: boolean;
+
+			/**
+			 * Show `no follow` checkbox in link dialog.
+			 */
 			noFollowCheckbox: boolean;
+
+			/**
+			 * Show `Open in new tab` checkbox in link dialog.
+			 */
 			openInNewTabCheckbox: boolean;
+
+			modeClassName: 'input' | 'select';
+			selectMultipleClassName: boolean;
+			selectSizeClassName?: number;
+			selectOptionsClassName: IUIOption[];
+
+			hotkeys: string[];
 		};
 	}
 }
@@ -53,9 +96,13 @@ Config.prototype.link = {
 	followOnDblClick: false,
 	processVideoLink: true,
 	processPastedLink: true,
-	removeLinkAfterFormat: true,
 	noFollowCheckbox: true,
-	openInNewTabCheckbox: true
+	openInNewTabCheckbox: true,
+	modeClassName: 'input',
+	selectMultipleClassName: true,
+	selectSizeClassName: 3,
+	selectOptionsClassName: [],
+	hotkeys: ['ctrl+k', 'cmd+k']
 };
 
 Config.prototype.controls.unlink = {
@@ -83,17 +130,120 @@ Config.prototype.controls.link = {
 	},
 
 	popup: (editor: IJodit, current, self: IControlType, close: () => void) => {
-		const i18n = editor.i18n.bind(editor),
+		return editor.e.fire('generateLinkForm.link', current, close);
+	},
+	tags: ['a'],
+	tooltip: 'Insert link'
+} as IControlType;
+
+/**
+ * Process link. Insert, dblclick or remove format
+ */
+export class link extends Plugin {
+	/** @override */
+	buttons = [
+		{
+			name: 'link',
+			group: 'insert'
+		}
+	];
+
+	/** @override */
+	protected afterInit(jodit: IJodit): void {
+		if (jodit.o.link.followOnDblClick) {
+			jodit.e.on('dblclick.link', this.onDblClickOnLink);
+		}
+
+		if (jodit.o.link.processPastedLink) {
+			jodit.e.on('processPaste.link', this.onProcessPasteLink);
+		}
+
+		jodit.e.on('generateLinkForm.link', this.generateForm);
+		jodit.registerCommand('openLinkDialog', {
+			exec: () => {
+				const dialog = new Dialog({
+					resizable: false
+				});
+
+				const htmlForm = this.generateForm(jodit.s.current(), () => {
+					dialog.close();
+				}) as UIForm;
+
+				htmlForm.container.classList.add('jodit-dialog_alert');
+				dialog.setContent(htmlForm);
+				dialog.open();
+
+				jodit.async.requestIdleCallback(() => {
+					const { url_input } = refs(htmlForm.container);
+					url_input?.focus();
+				});
+			},
+			hotkeys: jodit.o.link.hotkeys
+		});
+	}
+
+	@autobind
+	private onDblClickOnLink(e: MouseEvent) {
+		if (!Dom.isTag(e.target, 'a')) {
+			return;
+		}
+
+		const href = attr(e.target, 'href');
+
+		if (href) {
+			location.href = href;
+			e.preventDefault();
+		}
+	}
+
+	@autobind
+	private onProcessPasteLink(
+		ignore: ClipboardEvent,
+		html: string
+	): HTMLAnchorElement | void {
+		const { jodit } = this;
+
+		if (isURL(html)) {
+			if (jodit.o.link.processVideoLink) {
+				const embed = convertMediaUrlToVideoEmbed(html);
+
+				if (embed !== html) {
+					return jodit.createInside.fromHTML(
+						embed
+					) as HTMLAnchorElement;
+				}
+			}
+
+			const a = jodit.createInside.element('a');
+
+			a.setAttribute('href', html);
+			a.textContent = html;
+
+			jodit.e.stopPropagation('processPaste');
+
+			return a;
+		}
+	}
+
+	@autobind
+	private generateForm(
+		current: Nullable<Node>,
+		close: Function
+	): HTMLElement | IUIForm {
+		const { jodit } = this;
+
+		const i18n = jodit.i18n.bind(jodit),
 			{
 				openInNewTabCheckbox,
 				noFollowCheckbox,
 				formTemplate,
-				formClassName
-			} = editor.o.link;
+				formClassName,
+				modeClassName
+			} = jodit.o.link;
 
-		const html = formTemplate(editor),
+		const html = formTemplate(jodit),
 			form = isString(html)
-				? (editor.c.fromHTML(html, {
+				? (jodit.c.fromHTML(html, {
 						target_checkbox_box: openInNewTabCheckbox,
 						nofollow_checkbox_box: noFollowCheckbox
 				  }) as HTMLFormElement)
@@ -108,12 +258,15 @@ Config.prototype.controls.link = {
 				url_input
 			} = elements as IDictionary<HTMLInputElement>,
 			currentElement = current,
-			isImageContent = Dom.isImage(currentElement, editor.ew);
+			isImageContent = Dom.isImage(currentElement, jodit.ew);
 
 		let { content_input } = elements as IDictionary<HTMLInputElement>;
 
+		const { className_input } = elements as IDictionary<HTMLInputElement>,
+			{ className_select } = elements as IDictionary<HTMLSelectElement>;
+
 		if (!content_input) {
-			content_input = editor.c.element('input', {
+			content_input = jodit.c.element('input', {
 				type: 'hidden',
 				ref: 'content_input'
 			});
@@ -132,14 +285,10 @@ Config.prototype.controls.link = {
 		const getSelectionText = () =>
 			link
 				? link.innerText
-				: stripTags(editor.s.range.cloneContents(), editor.ed);
+				: stripTags(jodit.s.range.cloneContents(), jodit.ed);
 
-		if (current && Dom.closest(current, 'a', editor.editor)) {
-			link = Dom.closest(
-				current,
-				'a',
-				editor.editor
-			) as HTMLAnchorElement;
+		if (current && Dom.closest(current, 'a', jodit.editor)) {
+			link = Dom.closest(current, 'a', jodit.editor) as HTMLAnchorElement;
 		} else {
 			link = false;
 		}
@@ -150,6 +299,54 @@ Config.prototype.controls.link = {
 
 		if (link) {
 			url_input.value = attr(link, 'href') || '';
+
+			if (modeClassName) {
+				switch (modeClassName) {
+					case 'input':
+						if (className_input) {
+							className_input.value = attr(link, 'class') || '';
+						}
+						break;
+					case 'select':
+						if (className_select) {
+							for (
+								let i = 0;
+								i < className_select.selectedOptions.length;
+								i++
+							) {
+								const option = className_select.options.item(i);
+
+								if (option) {
+									option.selected = false;
+								}
+							}
+
+							const classNames = attr(link, 'class') || '';
+
+							classNames.split(' ').forEach(className => {
+								if (className) {
+									for (
+										let i = 0;
+										i < className_select.options.length;
+										i++
+									) {
+										const option = className_select.options.item(
+											i
+										);
+
+										if (
+											option?.value &&
+											option.value === className
+										) {
+											option.selected = true;
+										}
+									}
+								}
+							});
+						}
+						break;
+				}
+			}
 
 			if (openInNewTabCheckbox && target_checkbox) {
 				target_checkbox.checked = attr(link, 'target') === '_blank';
@@ -164,17 +361,17 @@ Config.prototype.controls.link = {
 			Dom.hide(unlink);
 		}
 
-		const snapshot = editor.observer.snapshot.make();
+		const snapshot = jodit.observer.snapshot.make();
 
 		if (unlink) {
-			editor.e.on(unlink, 'click', (e: MouseEvent) => {
-				editor.observer.snapshot.restore(snapshot);
+			jodit.e.on(unlink, 'click', (e: MouseEvent) => {
+				jodit.observer.snapshot.restore(snapshot);
 
 				if (link) {
 					Dom.unwrap(link);
 				}
 
-				editor.setEditorValue();
+				jodit.setEditorValue();
 
 				close();
 				e.preventDefault();
@@ -190,17 +387,17 @@ Config.prototype.controls.link = {
 
 			let links: HTMLAnchorElement[];
 
-			editor.observer.snapshot.restore(snapshot);
+			jodit.observer.snapshot.restore(snapshot);
 
 			const textWasChanged =
 				getSelectionText() !== content_input.value.trim();
 
 			if (!link) {
-				if (!editor.s.isCollapsed()) {
-					links = editor.s.wrapInTag('a') as HTMLAnchorElement[];
+				if (!jodit.s.isCollapsed()) {
+					links = jodit.s.wrapInTag('a') as HTMLAnchorElement[];
 				} else {
-					const a = editor.createInside.element('a');
-					editor.s.insertNode(a);
+					const a = jodit.createInside.element('a');
+					jodit.s.insertNode(a);
 					links = [a];
 				}
 			} else {
@@ -208,7 +405,40 @@ Config.prototype.controls.link = {
 			}
 
 			links.forEach(a => {
-				a.setAttribute('href', url_input.value);
+				attr(a, 'href', url_input.value);
+
+				if (modeClassName && (className_input ?? className_select)) {
+					if (modeClassName === 'input') {
+						if (
+							className_input.value === '' &&
+							a.hasAttribute('class')
+						) {
+							attr(a, 'class', null);
+						}
+
+						if (className_input.value !== '') {
+							attr(a, 'class', className_input.value);
+						}
+					} else if (modeClassName === 'select') {
+						if (a.hasAttribute('class')) {
+							attr(a, 'class', null);
+						}
+
+						for (
+							let i = 0;
+							i < className_select.selectedOptions.length;
+							i++
+						) {
+							const className = className_select.selectedOptions.item(
+								i
+							)?.value;
+
+							if (className) {
+								a.classList.add(className);
+							}
+						}
+					}
+				}
 
 				if (!isImageContent) {
 					if (content_input.value.trim().length) {
@@ -221,23 +451,23 @@ Config.prototype.controls.link = {
 				}
 
 				if (openInNewTabCheckbox && target_checkbox) {
-					if (target_checkbox.checked) {
-						a.setAttribute('target', '_blank');
-					} else {
-						a.removeAttribute('target');
-					}
+					attr(
+						a,
+						'target',
+						target_checkbox.checked ? '_blank' : null
+					);
 				}
 
 				if (noFollowCheckbox && nofollow_checkbox) {
-					if (nofollow_checkbox.checked) {
-						a.setAttribute('rel', 'nofollow');
-					} else {
-						a.removeAttribute('rel');
-					}
+					attr(
+						a,
+						'rel',
+						nofollow_checkbox.checked ? 'nofollow' : null
+					);
 				}
 			});
 
-			editor.setEditorValue();
+			jodit.setEditorValue();
 
 			close();
 
@@ -245,7 +475,7 @@ Config.prototype.controls.link = {
 		};
 
 		if (Dom.isElement(form)) {
-			editor.e.on(form, 'submit', (event: Event) => {
+			jodit.e.on(form, 'submit', (event: Event) => {
 				event.preventDefault();
 				event.stopImmediatePropagation();
 				onSubmit();
@@ -256,91 +486,13 @@ Config.prototype.controls.link = {
 		}
 
 		return form;
-	},
-	tags: ['a'],
-	tooltip: 'Insert link'
-} as IControlType;
-
-/**
- * Process link. Insert, dbclick or remove format
- *
- * @module plugins/link
- */
-export function link(jodit: IJodit): void {
-	if (jodit.o.link.followOnDblClick) {
-		jodit.e.on('afterInit changePlace', () => {
-			jodit.e
-				.off('dblclick.link')
-				.on(jodit.editor, 'dblclick.link', (e: MouseEvent) => {
-					if (!Dom.isTag(e.target, 'a')) {
-						return;
-					}
-
-					const href = attr(e.target, 'href');
-
-					if (href) {
-						location.href = href;
-						e.preventDefault();
-					}
-				});
-		});
 	}
 
-	if (jodit.o.link.processPastedLink) {
-		jodit.e.on(
-			'processPaste.link',
-			(event: ClipboardEvent, html: string): HTMLAnchorElement | void => {
-				if (isURL(html)) {
-					if (jodit.o.link.processVideoLink) {
-						const embed = convertMediaUrlToVideoEmbed(html);
-
-						if (embed !== html) {
-							return jodit.createInside.fromHTML(
-								embed
-							) as HTMLAnchorElement;
-						}
-					}
-
-					const a = jodit.createInside.element('a');
-
-					a.setAttribute('href', html);
-					a.textContent = html;
-
-					jodit.e.stopPropagation('processPaste');
-
-					return a;
-				}
-			}
-		);
-	}
-
-	if (jodit.o.link.removeLinkAfterFormat) {
-		jodit.e.on('afterCommand.link', (command: string) => {
-			const sel: Select = jodit.selection;
-
-			let newtag: Node, node: Nullable<Node>;
-
-			if (command === 'removeFormat') {
-				node = sel.current();
-				if (node && !Dom.isTag(node, 'a')) {
-					node = Dom.closest(node, 'a', jodit.editor);
-				}
-				if (Dom.isTag(node, 'a')) {
-					if (node.innerHTML === node.textContent) {
-						newtag = jodit.createInside.text(
-							(node as HTMLElement).innerHTML
-						);
-					} else {
-						newtag = jodit.createInside.element('span');
-						(newtag as HTMLElement).innerHTML = (node as HTMLElement).innerHTML;
-					}
-
-					if (node.parentNode) {
-						node.parentNode.replaceChild(newtag, node);
-						jodit.s.setCursorIn(newtag, true);
-					}
-				}
-			}
-		});
+	/** @override */
+	protected beforeDestruct(jodit: IJodit): void {
+		jodit.e
+			.off('generateLinkForm.link', this.generateForm)
+			.off('dblclick.link', this.onDblClickOnLink)
+			.off('processPaste.link', this.onProcessPasteLink);
 	}
 }

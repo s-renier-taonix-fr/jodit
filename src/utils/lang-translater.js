@@ -37,7 +37,7 @@ const translate = async (text, lang) => {
 	return new Promise((resolve, reject) => {
 		https
 			.get(
-				`https://translate.yandex.net/api/v1.5/tr.json/translate?` +
+				'https://translate.yandex.net/api/v1.5/tr.json/translate?' +
 					`key=${argv.ytak}&text=${text}&lang=en-${lang}&format=plain`,
 				res => {
 					res.on('data', d => {
@@ -106,7 +106,11 @@ const translateAll = text => {
 
 			fs.writeFileSync(
 				newFilePath,
-				`${header}\nmodule.exports = ${JSON.stringify(data, null, '\t')};`
+				`${header}\nmodule.exports = ${JSON.stringify(
+					data,
+					null,
+					'\t'
+				)};`
 			);
 		}
 	});
@@ -114,13 +118,22 @@ const translateAll = text => {
 	const indexFile = path.join(path.resolve(argv.dir), 'index.ts');
 
 	if (!fs.existsSync(indexFile)) {
+		const folder = path.dirname(indexFile);
+
+		if (!fs.existsSync(folder)) {
+			fs.mkdirSync(folder, {recursive: true});
+		}
+
 		fs.writeFileSync(
 			indexFile,
 			`${header}\n${langs
 				.map(
-					([lang, file, realLang]) => `const ${realLang} = require('./${file}');\n`
+					([lang, file, realLang]) =>
+						`const ${realLang} = require('./${file}');\n`
 				)
-				.join('')}\nexport default {${langs.map(([,,lang]) => lang).join(',')}};`
+				.join('')}\nexport default {${langs
+				.map(([, , lang]) => lang)
+				.join(',')}};`
 		);
 	}
 };

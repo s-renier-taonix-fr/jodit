@@ -3,8 +3,15 @@
  * Released under MIT see LICENSE.txt in the project root for license information.
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
-import { isFunction } from '../helpers/checker';
+import {
+	isBoolean,
+	isFunction,
+	isNumber,
+	isPlainObject,
+	isString
+} from '../helpers/checker';
 import { getClassName } from '../helpers/utils';
+import { type } from '../helpers';
 
 /**
  * Allow spy for the class
@@ -26,21 +33,25 @@ export const spy = function spy(target: Function) {
 
 		// Only methods need binding
 		if (descriptor && isFunction(descriptor.value)) {
-			const fn = descriptor.value;
+			target.prototype[key] = function (
+				this: typeof target,
+				...args: any[]
+			) {
+				console.log(
+					`Class: ${getClassName(target.prototype)} call: ${String(
+						key
+					)}(${args.map(a =>
+						isPlainObject(a) ||
+						isString(a) ||
+						isBoolean(a) ||
+						isNumber(a)
+							? JSON.stringify(a)
+							: `[${type(a)}]`
+					)})`
+				);
 
-			Object.defineProperty(target.prototype, key, {
-				configurable: true,
-				get() {
-					return function (this: typeof target, ...args: any[]) {
-						console.log(
-							`Class: ${getClassName(
-								target.prototype
-							)} call: ${String(key)}`
-						);
-						return fn.apply(this, args);
-					};
-				}
-			});
+				return descriptor.value.apply(this, args);
+			};
 		}
 	});
 };

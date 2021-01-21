@@ -7,15 +7,22 @@
 import { ToolbarCollection } from './collection';
 import * as consts from '../../../core/constants';
 import { Dom } from '../../../core/dom';
-import {
+import type {
 	IDictionary,
 	IToolbarButton,
 	IViewBased,
 	IJodit
 } from '../../../types';
 import { css, isFunction } from '../../../core/helpers';
+import { component } from '../../../core/decorators';
 
+@component
 export class ToolbarEditorCollection extends ToolbarCollection<IJodit> {
+	/** @override */
+	className(): string {
+		return 'ToolbarEditorCollection';
+	}
+
 	/** @override */
 	shouldBeDisabled(button: IToolbarButton): boolean {
 		const disabled = super.shouldBeDisabled(button);

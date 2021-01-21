@@ -14,10 +14,10 @@
  * @param {HTMLTableElement} table Table for which to create a module
  */
 
+import type { ICreate, IJodit } from '../types';
 import * as consts from '../core/constants';
 import { Dom } from '../core/dom';
 import { $$, attr, cssPath, each, toArray, trim } from '../core/helpers/';
-import { ICreate, IJodit } from '../types';
 import { ViewComponent } from '../core/component';
 import { getContainer } from '../core/global';
 import { debounce } from '../core/decorators';
@@ -35,6 +35,11 @@ declare module '../config' {
 }
 
 export class Table extends ViewComponent<IJodit> {
+	/** @override */
+	className(): string {
+		return 'Table';
+	}
+
 	private selected: Set<HTMLTableCellElement> = new Set();
 	private static selectedByTable: WeakMap<
 		HTMLTableElement,

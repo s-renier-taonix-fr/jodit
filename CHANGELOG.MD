@@ -8,6 +8,187 @@
 > - :house:      [Internal]
 > - :nail_care:  [Polish]
 
+## 3.5.4
+
+#### :bug: Bug Fix
+
+* [From Jodit 3.5.1 on, popup z-index is lower than the modal (Ant Design) z-index #587](https://github.com/xdan/jodit/issues/587)
+
+## 3.5.3
+
+#### :bug: Bug Fix
+
+* Fixed ES2018 version https://github.com/xdan/jodit/issues/585
+
+## 3.5.2
+
+#### :house: Internal
+
+* Added `async.requestIdleCallback` method https://developer.mozilla.org/en-US/docs/Web/API/Window/requestIdleCallback.
+* Focused inputs have box shadow.
+
+#### :bug: Bug Fix
+
+* [The link and image popup closes automatically on the inline preset. #582](https://github.com/xdan/jodit/issues/582)
+* [Preset:inline / Link Popup Closes #515](https://github.com/xdan/jodit/issues/515)
+* [Missing autobind-decorator types on the latest release #583](https://github.com/xdan/jodit/issues/583)
+* [link does not carry when dragging/dropping #581](https://github.com/xdan/jodit/issues/581)
+* [When editor is disabled/readonly (both), list controls are still available by using the arrow bug #572](https://github.com/xdan/jodit/issues/572)
+
+#### :rocket: New Feature
+
+##### New option `link.hotkeys: string[] = ['ctrl+k', 'cmd+k']`
+
+Execute new command `openLinkDialog`. Related: https://github.com/xdan/jodit/issues/576
+
+## 3.5.1
+
+#### :house: Internal
+
+* Removed `useAceEditor` option. [https://github.com/xdan/jodit/issues/544](https://github.com/xdan/jodit/issues/544)
+* Added `component` and `persistent` decorators
+```typescript
+import {component, persistent} from "./src/core/decorators";
+
+@component
+class Item extends UIElement{
+    @persistent
+    options = {
+        some: true
+    };
+}
+
+const item = new Item(jodit);
+console.log(item.options); // {some: true}
+
+item.options = {
+ some: false
+};
+
+const item2 = new Item(jodit); // or reload page
+console.log(item.options); // {some: false}
+```
+* In `UIInput` added `autocomplete`, `clearButton`, `icon` options.
+
+#### :bug: Bug Fix
+
+* [Clear formatting control does not clear all styles (keeps underline and strikethrough) #575](https://github.com/xdan/jodit/issues/575)
+* [Reset in size change not rescaling image #568](https://github.com/xdan/jodit/issues/568)
+* [Backspace in beginning of a *styled* line does not affect the line positioning #567](https://github.com/xdan/jodit/issues/567)
+* [Table cell elements are always left-aligned #550](https://github.com/xdan/jodit/issues/550)
+* [editor.destruct throws error #543](https://github.com/xdan/jodit/issues/543)
+* [How i can get Iframe without parent element <jodit>...</jodit> #540](https://github.com/xdan/jodit/issues/540)
+* [Layout bug and drag&drop image loading #536](https://github.com/xdan/jodit/issues/536)
+* [Popups are not showing at all on Legacy Edge #531](https://github.com/xdan/jodit/issues/531)
+* Fixed a bug when the search bar was shown in the scrolling editor, the editor was scrolled up. And the search box was not in sticky mode.
+
+#### :rocket: New Feature
+
+##### Jodit.atom
+`Jodit.Array` and `Jodit.Object` marked as deprecated. In `3.5` they will be removed. Instead, use `Jodit.atom`.
+
+```
+const editor = Jodit.make('#editor', {
+    buttons: Jodit.atom(['bold', 'italic']),
+    popup: {
+        img: Jodit.atom({
+            // full rewrite
+        })
+    }
+});
+```
+
+##### New option `observer.maxHistoryLength: number = Infinity`
+Related with https://github.com/xdan/jodit/issues/574. In some cases need to limit size of undo history.
+
+##### New options in `link.plugin`
+* @property {"input"|"select"|""} link.modeClassName="input" Use an input text to ask the classname or a select or not ask
+* @property {boolean} link.selectMultipleClassName=true Allow multiple choises (to use with modeClassName="select")
+* @property {number} link.selectSizeClassName=3 The size of the select (to use with modeClassName="select")
+* @property {IUIOption[]} link.selectOptionsClassName=[] The list of the option for the select (to use with modeClassName="select")
+* ex: [
+*			{ value: "", text: "" },
+*			{ value: "val1", text: "text1" },
+*			{ value: "val2", text: "text2" },
+*			{ value: "val3", text: "text3" }
+*		]
+PR: https://github.com/xdan/jodit/pull/577 Thanks @s-renier-taonix-fr
+
+##### New option `statusbar: boolean = true`
+Issue https://github.com/xdan/jodit/issues/535
+
+```
+const editor = Jodit.make('#editor', {
+   statusbar: false
+});
+console.log(editor.statusbar.isShown); // false
+editor.statusbar.show();
+console.log(editor.statusbar.isShown); // true
+```
+
+##### Buttons groups
+The `buttons` option can contain named groups of buttons.
+Each plugin decides which button belongs to which group.
+Thus, if you turn off the plugin, then its buttons will not be shown either.
+Available groups: ["source", "font-style", "script", "list", "indent", "font", "color", "media", "state", "clipboard", "insert", "history", "search", "other", "info"];
+
+```js
+const editor = Jodit.make('#editor', {
+    buttons: [
+        {
+            group: "custom",
+            buttons: []
+        },
+        "bold"
+    ]
+});
+
+Jodit.defaultOptions.controls.someButton = {
+    icon: 'pencil',
+    command: 'selectall'
+};
+
+Jodit.plugins.add('somePlugin', function (editor) {
+    editor.registerButton({
+        name: 'someButton',
+        group: 'custom'
+    });
+})
+```
+
+##### Hotkeys for BackSpace and Delete and remove part of text
+
+Added hotkey settings for Delete and Backspace buttons.
+And added hotkey `ctrl+backspace` for removing left part of text.
+Issue: [https://github.com/xdan/jodit/issues/532](https://github.com/xdan/jodit/issues/532)
+
+```js
+Jodit.make('#editor', {
+    delete: Jodit.atom({
+        hotkeys: {
+            delete: ['delete', 'cmd+backspace'],
+            deleteWord: ['ctrl+delete', 'cmd+alt+backspace', 'ctrl+alt+backspace'],
+            backspace: ['backspace'],
+            backspaceWord: ['ctrl+backspace']
+        }
+    })
+});
+```
+
+##### Added `one` method in event system
+
+```js
+const editor = Jodit.make('#editor');
+
+editor.events
+    .one('keydown', () => {
+        console.log('Fire only one time');
+    })
+    .on('keydown', () => {
+        console.log('Fire everytime');
+    });
+```
+
 ## 3.4.28
 
 #### :bug: Bug Fix

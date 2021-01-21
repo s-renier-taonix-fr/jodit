@@ -4,8 +4,6 @@
  * Copyright (c) 2013-2020 Valeriy Chupurnov. All rights reserved. https://xdsoft.net
  */
 
-import autobind from 'autobind-decorator';
-
 import * as consts from '../constants';
 import {
 	INSEPARABLE_TAGS,
@@ -37,6 +35,7 @@ import {
 	toArray
 } from '../helpers';
 import { Style } from './style/style';
+import { autobind } from '../decorators';
 
 type WindowSelection = Selection | null;
 
@@ -235,9 +234,9 @@ export class Select {
 		marker.id =
 			consts.MARKER_CLASS +
 			'_' +
-			+new Date() +
+			Number(new Date()) +
 			'_' +
-			('' + Math.random()).slice(2);
+			(String(Math.random())).slice(2);
 
 		marker.style.lineHeight = '0';
 		marker.style.display = 'none';
@@ -675,7 +674,7 @@ export class Select {
 			image.setAttribute('src', url);
 		}
 
-		if (defaultWidth !== null) {
+		if (defaultWidth != null) {
 			let dw: string = defaultWidth.toString();
 
 			if (

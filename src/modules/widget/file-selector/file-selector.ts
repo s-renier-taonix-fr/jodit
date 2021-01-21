@@ -11,7 +11,7 @@ import type {
 } from '../../../types';
 import { isFunction, $$, attr, val } from '../../../core/helpers';
 import { Dom } from '../../../core/dom';
-import { TabOption, TabsWidget } from '../';
+import { TabOption, TabsWidget } from '../tabs/tabs';
 import { UIBlock, UIForm, UIInput, UIButton } from '../../../core/ui';
 
 /**
@@ -146,7 +146,7 @@ export const FileSelectorWidget = (
 					label: 'URL',
 					name: 'url',
 					type: 'url',
-					placeholder: 'http://'
+					placeholder: 'https://'
 				}),
 				new UIInput(editor, {
 					name: 'text',
